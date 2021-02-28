@@ -18,6 +18,8 @@ import org.semanticweb.owlapi.model.parameters.Imports;
 import org.semanticweb.owlapi.util.AnnotationValueShortFormProvider;
 import org.semanticweb.owlapi.util.DefaultPrefixManager;
 import org.semanticweb.owlapi.util.ShortFormProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import xyz.aspectowl.tptp.reasoner.SpassTptpFolReasoner;
 import xyz.aspectowl.tptp.reasoner.util.UnsortedTPTPWriter;
 
@@ -48,8 +50,12 @@ import java.util.stream.IntStream;
  *
  * tc: temporary (anonymous) class (such as "r some A")
  * to: temporary (anonymous) object property (such as "inverse of r")
+ *
+ * owl: owl built-entity names (owlThing and owlNothing)
  */
 public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
+
+    private static final Logger log = LoggerFactory.getLogger(OWL2TPTPObjectRenderer.class);
 
     protected final Optional<OWLOntology> onto;
     private DefaultPrefixManager defaultPrefixManager;
@@ -253,8 +259,34 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
                 buf.append(String.format("%s(X,%s)", translate(ope), translate(filler)));
                 break;
             }
-            case OBJECT_HAS_SELF:
-                throw new RuntimeException("Not implemented " + type);
+            case OBJECT_HAS_SELF: {
+                OWLObjectHasSelf ohs = (OWLObjectHasSelf)ce;
+                buf.append(String.format("%s(X,X)", translate(ohs.getProperty())));
+                break;
+            }
+            case OBJECT_INTERSECTION_OF: {
+                OWLObjectIntersectionOf oio = (OWLObjectIntersectionOf) ce;
+                oio.operands().findFirst().ifPresent(operand -> buf.append(String.format("%s(X)", translate(operand))));
+                oio.operands().skip(1).forEach(operand -> buf.append(String.format(" && %s(X)", translate(operand))));
+                break;
+            }
+            case OBJECT_UNION_OF: {
+                OWLObjectUnionOf ouo = (OWLObjectUnionOf) ce;
+                ouo.operands().findFirst().ifPresent(operand -> buf.append(String.format("%s(X)", translate(operand))));
+                ouo.operands().skip(1).forEach(operand -> buf.append(String.format(" || %s(X)", translate(operand))));
+                break;
+            }
+            case OBJECT_COMPLEMENT_OF: {
+                OWLObjectComplementOf oco = (OWLObjectComplementOf) ce;
+                buf.append(String.format("!%s(X)", translate(oco.getOperand())));
+                break;
+            }
+            case OBJECT_ONE_OF: {
+                List<OWLIndividual> individuals = ((OWLObjectOneOf) ce).getOperandsAsList();
+                Optional.of(individuals.get(0)).ifPresent(individual -> buf.append(String.format("X == %s", translate(individual))));
+                individuals.stream().skip(1).forEach(individual -> buf.append(String.format("|| X == %s", translate(individual))));
+                break;
+            }
             case DATA_SOME_VALUES_FROM:
                 throw new RuntimeException("Not implemented " + type);
             case DATA_ALL_VALUES_FROM:
@@ -267,21 +299,9 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
                 throw new RuntimeException("Not implemented " + type);
             case DATA_HAS_VALUE:
                 throw new RuntimeException("Not implemented " + type);
-            case OBJECT_INTERSECTION_OF:
-                throw new RuntimeException("Not implemented " + type);
-            case OBJECT_UNION_OF:
-                throw new RuntimeException("Not implemented " + type);
-            case OBJECT_COMPLEMENT_OF:
-                throw new RuntimeException("Not implemented " + type);
-            case OBJECT_ONE_OF: {
-                List<OWLIndividual> individuals = ((OWLObjectOneOf) ce).getOperandsAsList();
-                Optional.of(individuals.get(0)).ifPresent(individual -> buf.append(String.format("X == %s", translate(individual))));
-                individuals.stream().skip(1).forEach(individual -> buf.append(String.format("|| X == %s", translate(individual))));
-                break;
-            }
 
             default:
-                System.err.printf("Unhandled class expression type: %s", type);
+                log.error("Unhandled class expression type: %s", type);
                 throw new RuntimeException("Unknown class expression type " + type);
         }
         buf.append(')');
@@ -355,6 +375,8 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
     public void visit(OWLOntology ontology) {
         // signature
         sig = new FolSignature(true);
+        sig.add(new Predicate("owlThing", 1));
+        sig.add(new Predicate("owlNothing", 1));
         ontology.signature(Imports.INCLUDED).forEach(entity -> entity.accept(this));
 
         folp = new FolParser(false);
@@ -363,6 +385,12 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
         // axioms
         bs = new FolBeliefSet();
         bs.setSignature(sig);
+        try {
+            bs.add(folp.parseFormula("forall X: (owlThing(X))"));
+            bs.add(folp.parseFormula("forall X: (!owlNothing(X))"));
+        } catch (IOException e) {
+            throw new OWL2TPTPRendererError(String.format("Error configuring %s. Could not parse trivial formula. This should not have happened.", OWL2TPTPObjectRenderer.class.getSimpleName()), e);
+        }
         ontology.axioms().forEach(axiom -> axiom.accept(this));
 
         try {
@@ -374,19 +402,19 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
 
     @Override
     public void visit(OWLClass ce) {
-        System.out.printf("Class: %s\n", ce);
+        log.debug("Class: %s\n", ce);
         sig.add(new Predicate(translate(ce), 1));
     }
 
     @Override
     public void visit(OWLNamedIndividual individual) {
-        System.out.printf("Individual: %s\n", individual);
+        log.debug("Individual: %s\n", individual);
         sig.add(new Constant(translateIRI(individual)));
     }
 
     @Override
     public void visit(OWLObjectProperty property) {
-        System.out.printf("ObjectProperty: %s\n", property);
+        log.debug("ObjectProperty: %s\n", property);
         sig.add(new Predicate(translateIRI(property), 2));
     }
 
@@ -410,7 +438,7 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
         OWLObjectPropertyExpression ope = axiom.getProperty();
         String predicateName = translateIRI(axiom.getProperty().asOWLObjectProperty());
         addFormula("forall X: (forall Y: (forall Z: (%s(X,Y) && %s(Y,Z) => %s(X,Z))))", predicateName, predicateName, predicateName);
-        System.out.printf("OWLTransitiveObjectPropertyAxiom: %s\n", axiom);
+        log.debug("OWLTransitiveObjectPropertyAxiom: %s\n", axiom);
     }
 
     @Override
@@ -418,7 +446,7 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
         OWLObjectPropertyExpression ope = axiom.getProperty();
         String predicateName = translate(ope);
         addFormula("forall X: (%s(X,X))", predicateName);
-        System.out.printf("OWLReflexiveObjectPropertyAxiom: %s\n", axiom);
+        log.debug("OWLReflexiveObjectPropertyAxiom: %s\n", axiom);
     }
 
     @Override
@@ -426,7 +454,7 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
         OWLClassExpression superCE = axiom.getSuperClass();
         OWLClassExpression subCE = axiom.getSubClass();
         addFormula("forall X: (%s(X) => %s(X))", translate(subCE), translate(superCE));
-        System.out.printf("SubclassOf axiom: %s\n", axiom);
+        log.debug("SubclassOf axiom: %s\n", axiom);
     }
 
     @Override
@@ -441,6 +469,6 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
 
     @Override
     public void doDefault(Object object) {
-        System.err.printf("%s\n", object);
+        log.error("%s\n", object);
     }
 }
