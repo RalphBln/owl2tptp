@@ -16,9 +16,7 @@ import org.semanticweb.owlapi.model.OWLOntologyManager;
 import xyz.aspectowl.tptp.reasoner.SpassTptpFolReasoner;
 import xyz.aspectowl.tptp.renderer.OWL2TPTPObjectRenderer;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.Arrays;
@@ -59,7 +57,7 @@ public class OWL2ReasonerTest {
         return Arrays.stream(ontologiesBaseDir.listFiles(file -> !file.getName().equals("test-base.ofn") && file.getName().endsWith(".ofn"))).flatMap(file -> {
             try {
                 OWLOntology onto = man.loadOntologyFromOntologyDocument(OWL2ReasonerTest.class.getResourceAsStream("/ontologies/" + file.getName()));
-                OWL2TPTPObjectRenderer renderer = new OWL2TPTPObjectRenderer(onto, new PrintWriter(System.out));
+                OWL2TPTPObjectRenderer renderer = new OWL2TPTPObjectRenderer(onto, new PrintWriter(new PrintStream(OutputStream.nullOutputStream())));
                 onto.accept(renderer);
                 return onto.annotations(man.getOWLDataFactory().getOWLAnnotationProperty(conjectureProp)).map(annotation ->
                         annotation.getValue().asLiteral().map(literal ->

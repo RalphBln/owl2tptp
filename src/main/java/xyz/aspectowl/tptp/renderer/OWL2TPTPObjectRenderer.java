@@ -114,6 +114,10 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
      * @return
      */
     private String translateIRI(@NotNull HasIRI iri) {
+        if (iri.getIRI().isThing())
+            return "owlThing";
+        if (iri.getIRI().isNothing())
+            return "owlNothing";
         String prefix;
         if (iri instanceof OWLClass)
             prefix = "nc"; // named class
