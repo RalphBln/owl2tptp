@@ -134,6 +134,96 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
 //        return iri.getIRI().toString();
     }
 
+    @Override
+    public void visit(OWLNegativeObjectPropertyAssertionAxiom axiom) {
+        addFormula("!%s(%s,%s)", translate(axiom.getProperty()), translate(axiom.getSubject()), translate(axiom.getObject()));
+    }
+
+    @Override
+    public void visit(OWLAsymmetricObjectPropertyAxiom axiom) {
+        addFormula("forall X: (forall Y: (%1%s(X,Y) <=> !%1%s(Y,X)))", translate(axiom.getProperty()));
+    }
+
+    @Override
+    public void visit(OWLDisjointClassesAxiom axiom) {
+        List<String> predicateNames = axiom.classExpressions().map(ce -> translate(ce)).collect(Collectors.toList());
+        combinations(predicateNames, predicateNames).forEach(pair -> addFormula("forall X: (!(%s(X) && %s(X)))", pair.getFirst(), pair.getSecond()));
+    }
+
+    @Override
+    public void visit(OWLObjectPropertyDomainAxiom axiom) {
+        addFormula("forall X: (forall Y: (%s(X,Y) => %s(X)))", translate(axiom.getProperty()), translate(axiom.getDomain()));
+    }
+
+    @Override
+    public void visit(OWLEquivalentObjectPropertiesAxiom axiom) {
+        StringBuilder buf = new StringBuilder("forall X: (forall Y: (");
+        axiom.properties().findFirst().ifPresent(ope -> buf.append(String.format("%s(X,Y)", translate(ope))));
+        axiom.properties().skip(1).forEach(ope -> buf.append(String.format(" <=> %s(X,Y)", translate(ope))));
+        buf.append("))");
+        addFormula(buf.toString());
+    }
+
+    @Override
+    public void visit(OWLDisjointObjectPropertiesAxiom axiom) {
+        List<String> predicateNames = axiom.properties().map(ce -> translate(ce)).collect(Collectors.toList());
+        combinations(predicateNames, predicateNames).forEach(pair -> addFormula("forall X: (forall Y: (!(%s(X,Y) && %s(X,Y)))", pair.getFirst(), pair.getSecond()));
+    }
+
+    @Override
+    public void visit(OWLObjectPropertyRangeAxiom axiom) {
+        addFormula("forall X: (forall Y: (%s(X,Y) => %s(Y)))", translate(axiom.getProperty()), translate(axiom.getRange()));
+    }
+
+    @Override
+    public void visit(OWLFunctionalObjectPropertyAxiom axiom) {
+        addFormula("forall X: (forall Y1: (forall Y2: (%1$s(X,Y1) && %1$s(X,Y2) => Y1 == Y2)))", translate(axiom.getProperty()));
+    }
+
+    @Override
+    public void visit(OWLSubObjectPropertyOfAxiom axiom) {
+        addFormula("forall X: (forall Y: (%s(X,Y) => %s(X,Y)))", translate(axiom.getSubProperty()), translate(axiom.getSuperProperty()));
+    }
+
+    @Override
+    public void visit(OWLDisjointUnionAxiom axiom) {
+
+    }
+
+    @Override
+    public void visit(OWLSymmetricObjectPropertyAxiom axiom) {
+        addFormula("forall X: (forall Y: (%1$s(X,Y) <=> %1$s(Y,X)))", translate(axiom.getProperty()));
+    }
+
+    @Override
+    public void visit(OWLIrreflexiveObjectPropertyAxiom axiom) {
+
+    }
+
+    @Override
+    public void visit(OWLInverseFunctionalObjectPropertyAxiom axiom) {
+        addFormula("forall X1: (forall X2: (forall Y: (%1$s(X1,Y) && %1$s(X2,Y) => X1 == X2)))", translate(axiom.getProperty()));
+    }
+
+    @Override
+    public void visit(OWLSameIndividualAxiom axiom) {
+
+    }
+
+    @Override
+    public void visit(OWLSubPropertyChainOfAxiom axiom) {
+    }
+
+    @Override
+    public void visit(OWLInverseObjectPropertiesAxiom axiom) {
+        addFormula("forall X: (forall Y: (%s(X,Y) <=> %s(Y,X)))", translate(axiom.getFirstProperty()), translate(axiom.getSecondProperty()));
+    }
+
+    @Override
+    public void visit(OWLHasKeyAxiom axiom) {
+
+    }
+
     private String translate(OWLIndividual individual) {
         if (individual.isAnonymous()) {
             throw new IllegalArgumentException(String.format("Cannot translate anonymous individuals to FOL: %s", individual));
