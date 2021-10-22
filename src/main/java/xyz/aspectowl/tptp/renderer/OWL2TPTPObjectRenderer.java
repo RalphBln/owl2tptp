@@ -185,8 +185,13 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
 
     @Override
     public Stream<FolFormula> visit(OWLDisjointUnionAxiom axiom) {
-        // TODO
-        return null;
+        var disjointnessFormulae = visit(axiom.getOWLDisjointClassesAxiom());
+        StringBuilder buf = new StringBuilder();
+        buf.append(String.format("forall X: ( %s(X) <=> ", translate(axiom.getOWLClass())));
+        axiom.classExpressions().findFirst().ifPresent(ce -> buf.append(String.format("%s(X)", translate(ce))));
+        axiom.classExpressions().skip(1).forEach(ce -> buf.append(String.format(" || %s(X)", translate(ce))));
+        buf.append(")");
+        return Stream.concat(makeFormula(buf.toString()), disjointnessFormulae);
     }
 
     @Override
@@ -196,8 +201,8 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
 
     @Override
     public Stream<FolFormula> visit(OWLAnnotationAssertionAxiom axiom) {
-        // TODO
-        return null;
+        // There is no translation of annotation assertion axioms to FOL since annotations have no semantics.
+        return Stream.empty();
     }
 
     @Override
@@ -411,7 +416,7 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
             case OBJECT_ONE_OF: {
                 List<OWLIndividual> individuals = ((OWLObjectOneOf) ce).getOperandsAsList();
                 Optional.of(individuals.get(0)).ifPresent(individual -> buf.append(String.format("X == %s", translate(individual))));
-                individuals.stream().skip(1).forEach(individual -> buf.append(String.format("|| X == %s", translate(individual))));
+                individuals.stream().skip(1).forEach(individual -> buf.append(String.format(" || X == %s", translate(individual))));
                 break;
             }
             case DATA_SOME_VALUES_FROM:
