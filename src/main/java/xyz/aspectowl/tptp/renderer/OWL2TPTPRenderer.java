@@ -19,7 +19,7 @@ public class OWL2TPTPRenderer extends AbstractOWLRenderer {
     @Override
     public void render(OWLOntology ontology, PrintWriter writer) throws OWLRendererException {
         try {
-            OWL2TPTPObjectRenderer ren = new OWL2TPTPObjectRenderer(ontology,
+            AspectAnnotationOWL2TPTPObjectRenderer ren = new AspectAnnotationOWL2TPTPObjectRenderer(ontology,
                     writer);
             ontology.accept(ren);
             writer.flush();

@@ -6,11 +6,9 @@ import net.sf.tweety.commons.util.Pair;
 import net.sf.tweety.logics.commons.syntax.Constant;
 import net.sf.tweety.logics.commons.syntax.Predicate;
 import net.sf.tweety.logics.fol.parser.FolParser;
-import net.sf.tweety.logics.fol.reasoner.FolReasoner;
 import net.sf.tweety.logics.fol.syntax.FolBeliefSet;
 import net.sf.tweety.logics.fol.syntax.FolFormula;
 import net.sf.tweety.logics.fol.syntax.FolSignature;
-import org.semanticweb.owlapi.apibinding.OWLManager;
 import org.semanticweb.owlapi.formats.PrefixDocumentFormat;
 import org.semanticweb.owlapi.io.XMLUtils;
 import org.semanticweb.owlapi.model.*;
@@ -20,17 +18,17 @@ import org.semanticweb.owlapi.util.DefaultPrefixManager;
 import org.semanticweb.owlapi.util.ShortFormProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import xyz.aspectowl.tptp.reasoner.SpassTptpFolReasoner;
 import xyz.aspectowl.tptp.reasoner.util.UnsortedTPTPWriter;
+import xyz.aspectowl.tptp.util.Counter;
 
 import javax.validation.constraints.NotNull;
-import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 // TODO include ontology import closure (priority HIGH)
 // TODO prevent name clashes (since we only use local names)
@@ -53,7 +51,7 @@ import java.util.stream.IntStream;
  *
  * owl: owl built-entity names (owlThing and owlNothing)
  */
-public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
+public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolFormula>> {
 
     private static final Logger log = LoggerFactory.getLogger(OWL2TPTPObjectRenderer.class);
 
@@ -135,93 +133,128 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
     }
 
     @Override
-    public void visit(OWLNegativeObjectPropertyAssertionAxiom axiom) {
-        addFormula("!%s(%s,%s)", translate(axiom.getProperty()), translate(axiom.getSubject()), translate(axiom.getObject()));
+    public Stream<FolFormula> visit(OWLNegativeObjectPropertyAssertionAxiom axiom) {
+        return makeFormula("!%s(%s,%s)", translate(axiom.getProperty()), translate(axiom.getSubject()), translate(axiom.getObject()));
     }
 
     @Override
-    public void visit(OWLAsymmetricObjectPropertyAxiom axiom) {
-        addFormula("forall X: (forall Y: (%1%s(X,Y) <=> !%1%s(Y,X)))", translate(axiom.getProperty()));
+    public Stream<FolFormula> visit(OWLAsymmetricObjectPropertyAxiom axiom) {
+        return makeFormula("forall X: (forall Y: (%1%s(X,Y) <=> !%1%s(Y,X)))", translate(axiom.getProperty()));
     }
 
     @Override
-    public void visit(OWLDisjointClassesAxiom axiom) {
+    public Stream<FolFormula> visit(OWLDisjointClassesAxiom axiom) {
         List<String> predicateNames = axiom.classExpressions().map(ce -> translate(ce)).collect(Collectors.toList());
-        combinations(predicateNames, predicateNames).forEach(pair -> addFormula("forall X: (!(%s(X) && %s(X)))", pair.getFirst(), pair.getSecond()));
+        return combinations(predicateNames, predicateNames).stream().flatMap(pair -> makeFormula("forall X: (!(%s(X) && %s(X)))", pair.getFirst(), pair.getSecond()));
     }
 
     @Override
-    public void visit(OWLObjectPropertyDomainAxiom axiom) {
-        addFormula("forall X: (forall Y: (%s(X,Y) => %s(X)))", translate(axiom.getProperty()), translate(axiom.getDomain()));
+    public Stream<FolFormula> visit(OWLObjectPropertyDomainAxiom axiom) {
+        return makeFormula("forall X: (forall Y: (%s(X,Y) => %s(X)))", translate(axiom.getProperty()), translate(axiom.getDomain()));
     }
 
     @Override
-    public void visit(OWLEquivalentObjectPropertiesAxiom axiom) {
+    public Stream<FolFormula> visit(OWLEquivalentObjectPropertiesAxiom axiom) {
         StringBuilder buf = new StringBuilder("forall X: (forall Y: (");
         axiom.properties().findFirst().ifPresent(ope -> buf.append(String.format("%s(X,Y)", translate(ope))));
         axiom.properties().skip(1).forEach(ope -> buf.append(String.format(" <=> %s(X,Y)", translate(ope))));
         buf.append("))");
-        addFormula(buf.toString());
+        return makeFormula(buf.toString());
     }
 
     @Override
-    public void visit(OWLDisjointObjectPropertiesAxiom axiom) {
+    public Stream<FolFormula> visit(OWLDisjointObjectPropertiesAxiom axiom) {
         List<String> predicateNames = axiom.properties().map(ce -> translate(ce)).collect(Collectors.toList());
-        combinations(predicateNames, predicateNames).forEach(pair -> addFormula("forall X: (forall Y: (!(%s(X,Y) && %s(X,Y)))", pair.getFirst(), pair.getSecond()));
+        return combinations(predicateNames, predicateNames).stream().flatMap(pair -> makeFormula("forall X: (forall Y: (!(%s(X,Y) && %s(X,Y)))", pair.getFirst(), pair.getSecond()));
     }
 
     @Override
-    public void visit(OWLObjectPropertyRangeAxiom axiom) {
-        addFormula("forall X: (forall Y: (%s(X,Y) => %s(Y)))", translate(axiom.getProperty()), translate(axiom.getRange()));
+    public Stream<FolFormula> visit(OWLObjectPropertyRangeAxiom axiom) {
+        return makeFormula("forall X: (forall Y: (%s(X,Y) => %s(Y)))", translate(axiom.getProperty()), translate(axiom.getRange()));
     }
 
     @Override
-    public void visit(OWLFunctionalObjectPropertyAxiom axiom) {
-        addFormula("forall X: (forall Y1: (forall Y2: (%1$s(X,Y1) && %1$s(X,Y2) => Y1 == Y2)))", translate(axiom.getProperty()));
+    public Stream<FolFormula> visit(OWLFunctionalObjectPropertyAxiom axiom) {
+        return makeFormula("forall X: (forall Y1: (forall Y2: (%1$s(X,Y1) && %1$s(X,Y2) => Y1 == Y2)))", translate(axiom.getProperty()));
     }
 
     @Override
-    public void visit(OWLSubObjectPropertyOfAxiom axiom) {
-        addFormula("forall X: (forall Y: (%s(X,Y) => %s(X,Y)))", translate(axiom.getSubProperty()), translate(axiom.getSuperProperty()));
+    public Stream<FolFormula> visit(OWLSubObjectPropertyOfAxiom axiom) {
+        return makeFormula("forall X: (forall Y: (%s(X,Y) => %s(X,Y)))", translate(axiom.getSubProperty()), translate(axiom.getSuperProperty()));
     }
 
     @Override
-    public void visit(OWLDisjointUnionAxiom axiom) {
-
+    public Stream<FolFormula> visit(OWLDisjointUnionAxiom axiom) {
+        // TODO
+        return null;
     }
 
     @Override
-    public void visit(OWLSymmetricObjectPropertyAxiom axiom) {
-        addFormula("forall X: (forall Y: (%1$s(X,Y) <=> %1$s(Y,X)))", translate(axiom.getProperty()));
+    public Stream<FolFormula> visit(OWLSymmetricObjectPropertyAxiom axiom) {
+        return makeFormula("forall X: (forall Y: (%1$s(X,Y) <=> %1$s(Y,X)))", translate(axiom.getProperty()));
     }
 
     @Override
-    public void visit(OWLIrreflexiveObjectPropertyAxiom axiom) {
-
+    public Stream<FolFormula> visit(OWLAnnotationAssertionAxiom axiom) {
+        // TODO
+        return null;
     }
 
     @Override
-    public void visit(OWLInverseFunctionalObjectPropertyAxiom axiom) {
-        addFormula("forall X1: (forall X2: (forall Y: (%1$s(X1,Y) && %1$s(X2,Y) => X1 == X2)))", translate(axiom.getProperty()));
+    public Stream<FolFormula> visit(OWLIrreflexiveObjectPropertyAxiom axiom) {
+        return makeFormula(String.format("forall X: (forall Y: (%s(X,Y) => X /== Y))", translate(axiom.getProperty())));
     }
 
     @Override
-    public void visit(OWLSameIndividualAxiom axiom) {
-
+    public Stream<FolFormula> visit(OWLInverseFunctionalObjectPropertyAxiom axiom) {
+        return makeFormula("forall X1: (forall X2: (forall Y: (%1$s(X1,Y) && %1$s(X2,Y) => X1 == X2)))", translate(axiom.getProperty()));
     }
 
     @Override
-    public void visit(OWLSubPropertyChainOfAxiom axiom) {
+    public Stream<FolFormula> visit(OWLSameIndividualAxiom axiom) {
+        StringBuilder buf = new StringBuilder();
+        axiom.individuals().findFirst().ifPresent(ind -> buf.append(translate(ind)));
+        axiom.individuals().skip(1).forEach(ind -> buf.append(String.format(" == %s", translate(ind))));
+        return makeFormula(buf.toString());
     }
 
     @Override
-    public void visit(OWLInverseObjectPropertiesAxiom axiom) {
-        addFormula("forall X: (forall Y: (%s(X,Y) <=> %s(Y,X)))", translate(axiom.getFirstProperty()), translate(axiom.getSecondProperty()));
+    public Stream<FolFormula> visit(OWLSubPropertyChainOfAxiom axiom) {
+        //  Θ(r1 o r2 o ... rn ⊑ s) = r1(X1,X2) && r2(X2,X3) && ... && rn(Xn, Xn+1) <=> s(X1,Xn)
+
+        StringBuilder quantBuf = new StringBuilder();
+        StringBuilder closingBuf  = new StringBuilder();
+        StringBuilder innerBuf    = new StringBuilder();
+
+        final Counter count = new Counter(1);
+        axiom.getPropertyChain().stream().findFirst().ifPresent(ope -> handleSubPropertyChainAxiomPart(ope, count, quantBuf, closingBuf, innerBuf));
+        axiom.getPropertyChain().stream().skip(1).forEach(ope -> {
+            innerBuf.append(" && ");
+            handleSubPropertyChainAxiomPart(ope, count, quantBuf, closingBuf, innerBuf);
+        });
+
+        quantBuf.append(String.format("forall X%d :(", count.value));
+        closingBuf.append(")");
+        innerBuf.append(String.format(" => %s(X1, X%d)", translate(axiom.getSuperProperty()), count.value));
+
+        return makeFormula(quantBuf.append(innerBuf).append(closingBuf).toString());
+    }
+
+    private void handleSubPropertyChainAxiomPart(OWLObjectPropertyExpression ope, Counter<Integer> count, StringBuilder quantBuf, StringBuilder closingBuf, StringBuilder innerBuf) {
+        quantBuf.append(String.format("forall X%d: (", count.value));
+        closingBuf.append(")");
+        innerBuf.append(String.format("%s(X%d,X%d)", translate(ope), count.value, ++count.value));
     }
 
     @Override
-    public void visit(OWLHasKeyAxiom axiom) {
+    public Stream<FolFormula> visit(OWLInverseObjectPropertiesAxiom axiom) {
+        return makeFormula("forall X: (forall Y: (%s(X,Y) <=> %s(Y,X)))", translate(axiom.getFirstProperty()), translate(axiom.getSecondProperty()));
+    }
 
+    @Override
+    public Stream<FolFormula> visit(OWLHasKeyAxiom axiom) {
+        // TODO
+        return null;
     }
 
     private String translate(OWLIndividual individual) {
@@ -399,14 +432,14 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
                 throw new RuntimeException("Unknown class expression type " + type);
         }
         buf.append(')');
-        addFormula(buf.toString(), tempName);
+        makeFormula(buf.toString(), tempName).forEach(bs::add);
         return tempName;
     }
 
     @Override
-    public void visit(OWLDifferentIndividualsAxiom axiom) {
+    public Stream<FolFormula> visit(OWLDifferentIndividualsAxiom axiom) {
         List<OWLIndividual> individuals = axiom.getIndividualsAsList();
-        combinations(individuals, individuals).forEach(pair -> addFormula("%s /== %s", translate(pair.getFirst()), translate(pair.getSecond())));
+        return combinations(individuals, individuals).stream().flatMap(pair -> makeFormula("%s /== %s", translate(pair.getFirst()), translate(pair.getSecond())));
     }
 
     private <T extends Comparable<? super T>> HashSet<Pair<T, T>> combinations(Collection<T> s1, Collection<T> s2) {
@@ -452,21 +485,21 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
         // the only possible anonymous object property expression is an inverse property expression
         OWLObjectProperty op = ((OWLObjectInverseOf)ope).getInverse().asOWLObjectProperty();
         String tempName = temporaryPredicate(op);
-        addFormula("forall X: (forall Y: (%s(X,Y) <=> %s(Y,X)))", translateIRI(op), tempName);
+        makeFormula("forall X: (forall Y: (%s(X,Y) <=> %s(Y,X)))", translateIRI(op), tempName).forEach(formula -> bs.add(formula));
 
         return tempName;
     }
 
-    private void addFormula(String format, Object... args) {
+    private Stream<FolFormula> makeFormula(String format, Object... args) {
         try {
-            bs.add((FolFormula)folp.parseFormula(String.format(format, args)));
+            return Stream.of((FolFormula)folp.parseFormula(String.format(format, args)));
         } catch (IOException e) {
             throw new ParserException(e);
         }
     }
 
     @Override
-    public void visit(OWLOntology ontology) {
+    public Stream<FolFormula> visit(OWLOntology ontology) {
         // signature
         sig = new FolSignature(true);
         sig.add(new Predicate("owlThing", 1));
@@ -485,84 +518,86 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitor {
         } catch (IOException e) {
             throw new OWL2TPTPRendererError(String.format("Error configuring %s. Could not parse trivial formula. This should not have happened.", OWL2TPTPObjectRenderer.class.getSimpleName()), e);
         }
-        ontology.axioms().forEach(axiom -> axiom.accept(this));
+        ontology.axioms().forEach(axiom -> axiom.accept(this).forEach(folFormula -> bs.add(folFormula)));
 
         try {
             out.printBase(bs);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+        return bs.stream();
     }
 
     @Override
-    public void visit(OWLClass ce) {
+    public Stream<FolFormula> visit(OWLClass ce) {
         log.debug("Class: %s\n", ce);
         sig.add(new Predicate(translate(ce), 1));
+        return Stream.empty();
     }
 
     @Override
-    public void visit(OWLNamedIndividual individual) {
+    public Stream<FolFormula> visit(OWLNamedIndividual individual) {
         log.debug("Individual: %s\n", individual);
         sig.add(new Constant(translateIRI(individual)));
+        return Stream.empty();
     }
 
     @Override
-    public void visit(OWLObjectProperty property) {
+    public Stream<FolFormula> visit(OWLObjectProperty property) {
         log.debug("ObjectProperty: %s\n", property);
         sig.add(new Predicate(translateIRI(property), 2));
+        return Stream.empty();
     }
 
     @Override
-    public void visit(OWLClassAssertionAxiom axiom) {
+    public Stream<FolFormula> visit(OWLClassAssertionAxiom axiom) {
         String individualTrans = translate(axiom.getIndividual());
         String ceTrans = translate(axiom.getClassExpression());
-        addFormula("%s(%s)", ceTrans, individualTrans);
+        return makeFormula("%s(%s)", ceTrans, individualTrans);
     }
 
     @Override
-    public void visit(OWLObjectPropertyAssertionAxiom axiom) {
+    public Stream<FolFormula> visit(OWLObjectPropertyAssertionAxiom axiom) {
         OWLIndividual subject = axiom.getSubject();
         OWLObjectPropertyExpression predicate = axiom.getProperty();
         OWLIndividual object = axiom.getObject();
-        addFormula("%s(%s,%s)", translate(predicate), translate(subject), translate(object));
+        return makeFormula("%s(%s,%s)", translate(predicate), translate(subject), translate(object));
     }
 
     @Override
-    public void visit(OWLTransitiveObjectPropertyAxiom axiom) {
+    public Stream<FolFormula> visit(OWLTransitiveObjectPropertyAxiom axiom) {
         OWLObjectPropertyExpression ope = axiom.getProperty();
         String predicateName = translateIRI(axiom.getProperty().asOWLObjectProperty());
-        addFormula("forall X: (forall Y: (forall Z: (%s(X,Y) && %s(Y,Z) => %s(X,Z))))", predicateName, predicateName, predicateName);
-        log.debug("OWLTransitiveObjectPropertyAxiom: %s\n", axiom);
+        return makeFormula("forall X: (forall Y: (forall Z: (%s(X,Y) && %s(Y,Z) => %s(X,Z))))", predicateName, predicateName, predicateName);
     }
 
     @Override
-    public void visit(OWLReflexiveObjectPropertyAxiom axiom) {
+    public Stream<FolFormula> visit(OWLReflexiveObjectPropertyAxiom axiom) {
         OWLObjectPropertyExpression ope = axiom.getProperty();
         String predicateName = translate(ope);
-        addFormula("forall X: (%s(X,X))", predicateName);
-        log.debug("OWLReflexiveObjectPropertyAxiom: %s\n", axiom);
+        return makeFormula("forall X: (%s(X,X))", predicateName);
     }
 
     @Override
-    public void visit(OWLSubClassOfAxiom axiom) {
+    public Stream<FolFormula> visit(OWLSubClassOfAxiom axiom) {
         OWLClassExpression superCE = axiom.getSuperClass();
         OWLClassExpression subCE = axiom.getSubClass();
-        addFormula("forall X: (%s(X) => %s(X))", translate(subCE), translate(superCE));
-        log.debug("SubclassOf axiom: %s\n", axiom);
+        return makeFormula("forall X: (%s(X) => %s(X))", translate(subCE), translate(superCE));
     }
 
     @Override
-    public void visit(OWLEquivalentClassesAxiom axiom) {
+    public Stream<FolFormula> visit(OWLEquivalentClassesAxiom axiom) {
         List<OWLClassExpression> ces = axiom.classExpressions().collect(Collectors.toList());
         StringBuilder buf = new StringBuilder();
         Optional.of(ces.get(0)).ifPresent(ce -> buf.append(String.format("forall X: (%s(X)", translate(ce))));
         ces.stream().skip(1).forEach(ce -> buf.append(String.format(" <=> %s(X)", translate(ce))));
         buf.append(')');
-        addFormula(buf.toString());
+        return makeFormula(buf.toString());
     }
 
     @Override
-    public void doDefault(Object object) {
+    public Stream<FolFormula> doDefault(Object object) {
         log.error("%s\n", object);
+        return Stream.empty();
     }
 }

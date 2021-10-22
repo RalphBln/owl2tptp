@@ -4,6 +4,7 @@ import net.sf.tweety.logics.fol.parser.FolParser;
 import net.sf.tweety.logics.fol.reasoner.FolReasoner;
 import net.sf.tweety.logics.fol.syntax.FolBeliefSet;
 import net.sf.tweety.logics.fol.syntax.FolFormula;
+import net.sf.tweety.logics.fol.writer.TPTPWriter;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -14,6 +15,7 @@ import org.semanticweb.owlapi.model.OWLOntology;
 import org.semanticweb.owlapi.model.OWLOntologyCreationException;
 import org.semanticweb.owlapi.model.OWLOntologyManager;
 import xyz.aspectowl.tptp.reasoner.SpassTptpFolReasoner;
+import xyz.aspectowl.tptp.renderer.AspectAnnotationOWL2TPTPObjectRenderer;
 import xyz.aspectowl.tptp.renderer.OWL2TPTPObjectRenderer;
 
 import java.io.*;
@@ -44,6 +46,16 @@ public class OWL2ReasonerTest {
     @ParameterizedTest
     @MethodSource("provideOntologySourceLocations")
     public void reasonOnOntologies(FolBeliefSet bs, FolFormula conjecture)  {
+        try {
+            PrintWriter out = new PrintWriter(System.out);
+            TPTPWriter w = new TPTPWriter(out);
+            w.printBase(bs);
+            w.printQuery(conjecture);
+            out.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        System.out.printf(((SpassTptpFolReasoner)prover).queryProof(bs, conjecture));
         assertTrue(prover.query(bs, conjecture));
     }
 
@@ -57,7 +69,7 @@ public class OWL2ReasonerTest {
         return Arrays.stream(ontologiesBaseDir.listFiles(file -> !file.getName().equals("test-base.ofn") && file.getName().endsWith(".ofn"))).flatMap(file -> {
             try {
                 OWLOntology onto = man.loadOntologyFromOntologyDocument(OWL2ReasonerTest.class.getResourceAsStream("/ontologies/" + file.getName()));
-                OWL2TPTPObjectRenderer renderer = new OWL2TPTPObjectRenderer(onto, new PrintWriter(new PrintStream(OutputStream.nullOutputStream())));
+                AspectAnnotationOWL2TPTPObjectRenderer renderer = new AspectAnnotationOWL2TPTPObjectRenderer(onto, new PrintWriter(new PrintStream(OutputStream.nullOutputStream())));
                 onto.accept(renderer);
                 return onto.annotations(man.getOWLDataFactory().getOWLAnnotationProperty(conjectureProp)).map(annotation ->
                         annotation.getValue().asLiteral().map(literal ->
