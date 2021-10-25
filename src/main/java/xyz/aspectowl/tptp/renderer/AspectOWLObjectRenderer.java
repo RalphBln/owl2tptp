@@ -9,11 +9,19 @@ import java.util.stream.Stream;
  *
  * @author ralph
  */
-public interface AspectOWLObjectRenderer<T> {
+public interface AspectOWLObjectRenderer<T> extends OWLObjectVisitorEx<T> {
 
     default boolean hasAspect(OWLAxiom axiom) {
         return false;
     }
 
-    public T handleAspects(OWLAxiom axiom, Stream<FolFormula> nonAspectFormulae);
+    /**
+     * Returns
+     * @param axiom
+     * @param nonAspectFormulae
+     * @return
+     */
+    public T handleAspects(OWLAxiom axiom, T nonAspectFormulae);
+
+
 }

@@ -12,6 +12,8 @@ Import(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/base>)
 Annotation(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/base#conjecture> "ncCronenberged(niMorty)")
 
 Declaration(Class(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Cronenberged>))
+Declaration(Class(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#DimensionC137>))
+Declaration(Class(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#ReplacementDimension>))
 Declaration(Class(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Unmodified>))
 Declaration(NamedIndividual(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Morty>))
 
@@ -23,6 +25,15 @@ Declaration(NamedIndividual(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tp
 
 DisjointClasses(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Cronenberged> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Unmodified>)
 
+# Class: <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#DimensionC137> (<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#DimensionC137>)
+
+
+# Class: <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#ReplacementDimension> (<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#ReplacementDimension>)
+
+
+# Class: <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Unmodified> (<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Unmodified>)
+
+
 
 ############################
 #   Named Individuals
@@ -30,8 +41,9 @@ DisjointClasses(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspe
 
 # Individual: <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Morty> (<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Morty>)
 
-ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/base#DimensionC137>) <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Cronenberged> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Morty>)
-ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/base#ReplacementDimension>) <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Unmodified> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Morty>)
+ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#DimensionC137>) <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Cronenberged> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Morty>)
+ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#ReplacementDimension>) <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Unmodified> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Morty>)
 
 
+DisjointClasses(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Cronenberged> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#DimensionC137> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#ReplacementDimension> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_2#Unmodified>)
 )
