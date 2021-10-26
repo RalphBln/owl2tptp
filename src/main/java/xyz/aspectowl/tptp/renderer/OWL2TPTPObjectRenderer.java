@@ -278,7 +278,7 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
      * @param ce
      * @return
      */
-    private String translate(OWLClassExpression ce) {
+    protected String translate(OWLClassExpression ce) {
         ClassExpressionType type = ce.getClassExpressionType();
         if (type == ClassExpressionType.OWL_CLASS)
             return translateIRI(ce.asOWLClass());
@@ -495,7 +495,13 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
         return tempName;
     }
 
-    private Stream<FolFormula> makeFormula(String format, Object... args) {
+    /**
+     * Always returns a stream containing *exactly one* formula.
+     * @param format a formatted TPTP string
+     * @param args the arguments for the formatted string
+     * @return A stream containing *exactly one* formula.
+     */
+    protected Stream<FolFormula> makeFormula(String format, Object... args) {
         try {
             return Stream.of((FolFormula)folp.parseFormula(String.format(format, args)));
         } catch (IOException e) {

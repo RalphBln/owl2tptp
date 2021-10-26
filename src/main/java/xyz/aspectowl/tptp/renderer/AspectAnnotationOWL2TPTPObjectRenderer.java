@@ -1,9 +1,6 @@
 package xyz.aspectowl.tptp.renderer;
 
 import net.sf.tweety.logics.fol.syntax.FolFormula;
-import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.expression.OWLClassExpressionParser;
-import org.semanticweb.owlapi.manchestersyntax.parser.ManchesterOWLSyntaxFramesParser;
 import org.semanticweb.owlapi.manchestersyntax.parser.ManchesterOWLSyntaxParserImpl;
 import org.semanticweb.owlapi.model.*;
 
@@ -17,12 +14,16 @@ public class AspectAnnotationOWL2TPTPObjectRenderer extends AspectOWL2TPTPObject
 
     private static final IRI aspectAnnotationProperty = IRI.create("http://ontology.aspectowl.xyz#hasAspect");
 
+    private final ManchesterOWLSyntaxParserImpl manchesterSyntaxParser;
+
     public AspectAnnotationOWL2TPTPObjectRenderer(OWLOntology ontology, PrintWriter writer) {
         super(ontology, writer);
+        manchesterSyntaxParser = new ManchesterOWLSyntaxParserImpl(new OntologyConfigurator(), ontology.getOWLOntologyManager().getOWLDataFactory());
+        manchesterSyntaxParser.getPrefixManager().setDefaultPrefix("");
+        manchesterSyntaxParser.getPrefixManager().setPrefix("", ontology.getOntologyID().getOntologyIRI().get().toString() + "#");
+        manchesterSyntaxParser.setDefaultOntology(ontology);
     }
 
-    private final OWLOntologyManager man = OWLManager.createOWLOntologyManager();
-    private final ManchesterOWLSyntaxParserImpl parser = new ManchesterOWLSyntaxParserImpl(new OntologyConfigurator(), man.getOWLDataFactory());
 
     @Override
     public boolean hasAspect(OWLAxiom axiom) {
@@ -31,16 +32,16 @@ public class AspectAnnotationOWL2TPTPObjectRenderer extends AspectOWL2TPTPObject
 
     @Override
     public Stream<FolFormula> handleAspects(OWLAxiom axiom, Stream<FolFormula> nonAspectFormulae) {
-        axiom.signature().forEach(entity -> entity.);
         axiom.annotations()
                 .filter(a -> a.getProperty().getIRI().equals(aspectAnnotationProperty))
-//                .filter(a -> a.annotationValue().isAnonymousExpression() && a.annotationValue().nestedClassExpressions());
-                .forEach(a -> System.out.println("*** Aspect *** " + a.getValue()));
+                .filter(a -> a.annotationValue().isLiteral())
+                .forEach(a -> a.getValue().asLiteral().ifPresent(literal -> {
+                    manchesterSyntaxParser.setStringToParse(literal.getLiteral());
+                    OWLClassExpression aspect = manchesterSyntaxParser.parseClassExpression();
+                    System.out.println(aspect);
+                }));
+
         Stream<FolFormula> aspectFormulae = Stream.empty(); // TODO
         return Stream.concat(nonAspectFormulae, aspectFormulae);
-    }
-
-
-
     }
 }
