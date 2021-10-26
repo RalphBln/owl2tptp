@@ -1,13 +1,21 @@
 package xyz.aspectowl.tptp.renderer;
 
+import net.sf.tweety.logics.fol.syntax.Equivalence;
 import net.sf.tweety.logics.fol.syntax.FolFormula;
 import org.semanticweb.owlapi.manchestersyntax.parser.ManchesterOWLSyntaxParserImpl;
 import org.semanticweb.owlapi.model.*;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
 import java.util.stream.Stream;
 
 /**
+ * This class renders aspect-oriented OWL ontologies with annotations (unlike AspectOWL) as FOL belief sets serialized
+ * in TPTP syntax.
+ * Shortcomings of the annotation approach are that
+ * 1. annotation subjects cannot be class expressions, so we had to invent a makeshift mechanism: class expressions must
+ *    be denoted in Manchester syntax and added as String literal annotations.
+ * 2. Annotations on axioms cannot be nested. Therefore, the annotation approach limits the aspect nesting level to 1.
  * @author ralph
  */
 public class AspectAnnotationOWL2TPTPObjectRenderer extends AspectOWL2TPTPObjectRenderer {
@@ -32,16 +40,19 @@ public class AspectAnnotationOWL2TPTPObjectRenderer extends AspectOWL2TPTPObject
 
     @Override
     public Stream<FolFormula> handleAspects(OWLAxiom axiom, Stream<FolFormula> nonAspectFormulae) {
-        axiom.annotations()
-                .filter(a -> a.getProperty().getIRI().equals(aspectAnnotationProperty))
-                .filter(a -> a.annotationValue().isLiteral())
-                .forEach(a -> a.getValue().asLiteral().ifPresent(literal -> {
-                    manchesterSyntaxParser.setStringToParse(literal.getLiteral());
-                    OWLClassExpression aspect = manchesterSyntaxParser.parseClassExpression();
-                    System.out.println(aspect);
-                }));
+        if (hasAspect(axiom)) {
+            var result = new ArrayList<FolFormula>();
+            axiom.annotations()
+                    .filter(a -> a.getProperty().getIRI().equals(aspectAnnotationProperty))
+                    .filter(a -> a.annotationValue().isLiteral())
+                    .forEach(a -> a.getValue().asLiteral().ifPresent(literal -> {
+                        manchesterSyntaxParser.setStringToParse(literal.getLiteral());
+                        OWLClassExpression aspect = manchesterSyntaxParser.parseClassExpression();
+                        makeFormula(String.format("forall A: (%s(A))", translate(aspect))).forEach(aspectEquivalencePart -> nonAspectFormulae.forEach(joinpointAxiomEquivalencePart -> result.add(new Equivalence(aspectEquivalencePart, joinpointAxiomEquivalencePart))));
+                    }));
 
-        Stream<FolFormula> aspectFormulae = Stream.empty(); // TODO
-        return Stream.concat(nonAspectFormulae, aspectFormulae);
+            return result.stream();
+        }
+        return nonAspectFormulae;
     }
 }
