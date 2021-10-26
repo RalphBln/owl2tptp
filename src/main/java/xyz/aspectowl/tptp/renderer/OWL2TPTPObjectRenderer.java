@@ -79,6 +79,7 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
     // SROIQ(D).
     private FolBeliefSet bs;
     private FolSignature sig;
+    private ArrayList<FolFormula> auxiliaryFormulae = new ArrayList<>();
 
     public OWL2TPTPObjectRenderer(@Nullable OWLOntology ontology, PrintWriter writer) {
         onto = Optional.ofNullable(ontology);
@@ -437,7 +438,7 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
                 throw new RuntimeException("Unknown class expression type " + type);
         }
         buf.append(')');
-        makeFormula(buf.toString(), tempName).forEach(bs::add);
+        makeFormula(buf.toString(), tempName).forEach(auxiliaryFormulae::add);
         return tempName;
     }
 
@@ -490,7 +491,7 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
         // the only possible anonymous object property expression is an inverse property expression
         OWLObjectProperty op = ((OWLObjectInverseOf)ope).getInverse().asOWLObjectProperty();
         String tempName = temporaryPredicate(op);
-        makeFormula("forall X: (forall Y: (%s(X,Y) <=> %s(Y,X)))", translateIRI(op), tempName).forEach(formula -> bs.add(formula));
+        makeFormula("forall X: (forall Y: (%s(X,Y) <=> %s(Y,X)))", translateIRI(op), tempName).forEach(auxiliaryFormulae::add);
 
         return tempName;
     }
@@ -529,7 +530,10 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
         } catch (IOException e) {
             throw new OWL2TPTPRendererError(String.format("Error configuring %s. Could not parse trivial formula. This should not have happened.", OWL2TPTPObjectRenderer.class.getSimpleName()), e);
         }
-        ontology.axioms().forEach(axiom -> axiom.accept(this).forEach(folFormula -> bs.add(folFormula)));
+        ontology.axioms().forEach(axiom -> {
+            Stream.concat(axiom.accept(this), auxiliaryFormulae.stream()).forEach(folFormula -> bs.add(folFormula));
+            auxiliaryFormulae = new ArrayList<>();
+        });
 
         try {
             out.printBase(bs);
