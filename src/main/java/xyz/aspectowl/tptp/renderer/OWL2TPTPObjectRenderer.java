@@ -74,23 +74,6 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
         return bs;
     }
 
-    /**
-     * Returns the auxiliary formulae created by the last call to one of the visit(OWLAxiom) methods.
-     * Called by subclasses that might treat auxiliary formulae differently.
-     * @return
-     */
-    protected Stream<FolFormula> auxiliaryFormulae() {
-        return auxiliaryFormulae.stream();
-    }
-
-    /**
-     * May be called by sublclasses that treat auxiliary formulae differntly (e.g. put them into an aspect).
-     * Calling this method prevents auxiliary formulae from being added to the belief set at the global scope.
-     */
-    protected void resetAuxiliaryFormulae() {
-        auxiliaryFormulae = new ArrayList<>();
-    }
-
     // There is a DlBeliefSet and I considered using it (somehow shove the OWL2 KB into a DLBeliefSet and then maybe
     // transform the latter to a FolBeliedSet) but it turned out DLBeliefSet only implements ALC while we need full
     // SROIQ(D).
