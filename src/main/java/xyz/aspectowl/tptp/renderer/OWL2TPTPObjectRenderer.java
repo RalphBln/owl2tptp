@@ -139,7 +139,7 @@ public class OWL2TPTPObjectRenderer implements OWLObjectVisitorEx<Stream<FolForm
 
     @Override
     public Stream<FolFormula> visit(OWLAsymmetricObjectPropertyAxiom axiom) {
-        return makeFormula("forall X: (forall Y: (%1%s(X,Y) <=> !%1%s(Y,X)))", translate(axiom.getProperty()));
+        return makeFormula("forall X: (forall Y: (%1$s(X,Y) <=> !%1$s(Y,X)))", translate(axiom.getProperty()));
     }
 
     @Override
