@@ -13,11 +13,18 @@
         <maven.compiler.target>15</maven.compiler.target>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>tweety</id>
+            <url>https://tweetyproject.org/mvn/</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>net.sourceforge.owlapi</groupId>
             <artifactId>owlapi-distribution</artifactId>
-            <version>5.1.16</version>
+            <version>4.5.19</version> <!-- This needs to be in sync with Protege's current owlapi version. -->
         </dependency>
         <dependency>
             <groupId>net.sf.tweety</groupId>
@@ -27,17 +34,17 @@
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-api</artifactId>
-            <version>5.7.1</version>
+            <version>5.8.2</version>
         </dependency>
         <dependency>
             <groupId>org.junit.vintage</groupId>
             <artifactId>junit-vintage-engine</artifactId>
-            <version>5.7.1</version>
+            <version>5.8.2</version>
         </dependency>
         <dependency>
             <groupId>org.junit.jupiter</groupId>
             <artifactId>junit-jupiter-params</artifactId>
-            <version>5.7.1</version>
+            <version>5.8.2</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
