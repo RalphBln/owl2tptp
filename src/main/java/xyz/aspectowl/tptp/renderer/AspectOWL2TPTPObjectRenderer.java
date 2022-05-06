@@ -4,6 +4,7 @@ import net.sf.tweety.logics.fol.syntax.FolFormula;
 import org.semanticweb.owlapi.model.*;
 
 import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.stream.Stream;
 
 /**
@@ -11,7 +12,7 @@ import java.util.stream.Stream;
  */
 public abstract class AspectOWL2TPTPObjectRenderer extends OWL2TPTPObjectRenderer implements AspectOWLObjectRenderer<Stream<FolFormula>> {
 
-    public AspectOWL2TPTPObjectRenderer(OWLOntology ontology, PrintWriter writer) {
+    public AspectOWL2TPTPObjectRenderer(OWLOntology ontology, Writer writer) {
         super(ontology, writer);
     }
 

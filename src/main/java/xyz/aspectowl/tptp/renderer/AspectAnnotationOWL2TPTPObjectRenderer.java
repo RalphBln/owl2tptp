@@ -2,10 +2,14 @@ package xyz.aspectowl.tptp.renderer;
 
 import net.sf.tweety.logics.fol.syntax.Equivalence;
 import net.sf.tweety.logics.fol.syntax.FolFormula;
+import org.semanticweb.owlapi.OWLAPIConfigProvider;
 import org.semanticweb.owlapi.manchestersyntax.parser.ManchesterOWLSyntaxParserImpl;
-import org.semanticweb.owlapi.model.*;
+import org.semanticweb.owlapi.model.IRI;
+import org.semanticweb.owlapi.model.OWLAxiom;
+import org.semanticweb.owlapi.model.OWLClassExpression;
+import org.semanticweb.owlapi.model.OWLOntology;
 
-import java.io.PrintWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.stream.Stream;
 
@@ -24,9 +28,9 @@ public class AspectAnnotationOWL2TPTPObjectRenderer extends AspectOWL2TPTPObject
 
     private final ManchesterOWLSyntaxParserImpl manchesterSyntaxParser;
 
-    public AspectAnnotationOWL2TPTPObjectRenderer(OWLOntology ontology, PrintWriter writer) {
+    public AspectAnnotationOWL2TPTPObjectRenderer(OWLOntology ontology, Writer writer) {
         super(ontology, writer);
-        manchesterSyntaxParser = new ManchesterOWLSyntaxParserImpl(new OntologyConfigurator(), ontology.getOWLOntologyManager().getOWLDataFactory());
+        manchesterSyntaxParser = new ManchesterOWLSyntaxParserImpl(new OWLAPIConfigProvider(), ontology.getOWLOntologyManager().getOWLDataFactory());
         manchesterSyntaxParser.getPrefixManager().setDefaultPrefix("");
         manchesterSyntaxParser.getPrefixManager().setPrefix("", ontology.getOntologyID().getOntologyIRI().get().toString() + "#");
         manchesterSyntaxParser.setDefaultOntology(ontology);
@@ -35,21 +39,22 @@ public class AspectAnnotationOWL2TPTPObjectRenderer extends AspectOWL2TPTPObject
 
     @Override
     public boolean hasAspect(OWLAxiom axiom) {
-        return axiom.isAnnotated() && axiom.annotations().filter(a -> a.getProperty().getIRI().equals(aspectAnnotationProperty)).findAny().map(c -> true).get();
+        return axiom.isAnnotated() && axiom.getAnnotations().stream().filter(a -> a.getProperty().getIRI().equals(aspectAnnotationProperty)).findAny().map(c -> true).get();
     }
 
     @Override
     public Stream<FolFormula> handleAspects(OWLAxiom axiom, Stream<FolFormula> nonAspectFormulae) {
         if (hasAspect(axiom)) {
             var result = new ArrayList<FolFormula>();
-            axiom.annotations()
+            axiom.getAnnotations().stream()
                     .filter(a -> a.getProperty().getIRI().equals(aspectAnnotationProperty))
                     .filter(a -> a.annotationValue().isLiteral())
-                    .forEach(a -> a.getValue().asLiteral().ifPresent(literal -> {
-                        manchesterSyntaxParser.setStringToParse(literal.getLiteral());
+                    .forEach(a -> {
+                        var literal = a.getValue().asLiteral();
+                        manchesterSyntaxParser.setStringToParse(literal.get().getLiteral());
                         OWLClassExpression aspect = manchesterSyntaxParser.parseClassExpression();
                         makeFormula(String.format("forall A: (%s(A))", translate(aspect))).forEach(aspectEquivalencePart -> nonAspectFormulae.forEach(joinpointAxiomEquivalencePart -> result.add(new Equivalence(aspectEquivalencePart, joinpointAxiomEquivalencePart))));
-                    }));
+                    });
 
             return result.stream();
         }

@@ -10,10 +10,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.semanticweb.owlapi.apibinding.OWLManager;
-import org.semanticweb.owlapi.model.IRI;
-import org.semanticweb.owlapi.model.OWLOntology;
-import org.semanticweb.owlapi.model.OWLOntologyCreationException;
-import org.semanticweb.owlapi.model.OWLOntologyManager;
+import org.semanticweb.owlapi.model.*;
 import xyz.aspectowl.tptp.reasoner.SpassTptpFolReasoner;
 import xyz.aspectowl.tptp.renderer.AspectAnnotationOWL2TPTPObjectRenderer;
 import xyz.aspectowl.tptp.renderer.OWL2TPTPObjectRenderer;
@@ -66,15 +63,17 @@ public class OWL2ReasonerTest {
 
         URL ontologiesBaseURL = OWL2ReasonerTest.class.getResource("/ontologies");
         File ontologiesBaseDir = new File(ontologiesBaseURL.toURI());
+
+        OWLAnnotationProperty conjectureAnnotationProperty = man.getOWLDataFactory().getOWLAnnotationProperty(conjectureProp);
+
         return Arrays.stream(ontologiesBaseDir.listFiles(file -> !file.getName().equals("test-base.ofn") && file.getName().endsWith(".ofn"))).flatMap(file -> {
             try {
                 OWLOntology onto = man.loadOntologyFromOntologyDocument(OWL2ReasonerTest.class.getResourceAsStream("/ontologies/" + file.getName()));
                 AspectAnnotationOWL2TPTPObjectRenderer renderer = new AspectAnnotationOWL2TPTPObjectRenderer(onto, new PrintWriter(new PrintStream(OutputStream.nullOutputStream())));
                 onto.accept(renderer);
-                return onto.annotations(man.getOWLDataFactory().getOWLAnnotationProperty(conjectureProp)).map(annotation ->
-                        annotation.getValue().asLiteral().map(literal ->
-                                Arguments.of(renderer.getBeliefSet(), parseFormula(literal.getLiteral(), renderer.getFolParser()).orElseThrow(() -> new RuntimeException()))
-                        ).get());
+                return onto.getAnnotations().stream().filter(annotation -> annotation.getProperty().equals(conjectureAnnotationProperty)).map(annotation ->
+                      Arguments.of(renderer.getBeliefSet(), parseFormula(annotation.getValue().asLiteral().get().getLiteral(), renderer.getFolParser()).orElseThrow(() -> new RuntimeException()))
+                );
             } catch (OWLOntologyCreationException e) {
                 throw new RuntimeException(e);
             }
