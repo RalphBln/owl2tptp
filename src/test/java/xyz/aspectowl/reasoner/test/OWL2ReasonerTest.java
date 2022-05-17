@@ -22,6 +22,7 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 /**
@@ -30,6 +31,7 @@ import static org.junit.Assert.assertTrue;
 public class OWL2ReasonerTest {
 
     private static final IRI conjectureProp = IRI.create("http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/base#conjecture");
+    private static final IRI nonConjectureProp = IRI.create("http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/base#nonconjecture");
 
     private static FolReasoner prover;
 
@@ -42,18 +44,23 @@ public class OWL2ReasonerTest {
 
     @ParameterizedTest
     @MethodSource("provideOntologySourceLocations")
-    public void reasonOnOntologies(FolBeliefSet bs, FolFormula conjecture)  {
+    public void reasonOnOntologies(File ontologyFile, FolBeliefSet bs, Conjecture conjecture)  {
+        System.out.printf("Processing ontology file: %s\n\n", ontologyFile.getName());
         try {
             PrintWriter out = new PrintWriter(System.out);
             TPTPWriter w = new TPTPWriter(out);
             w.printBase(bs);
-            w.printQuery(conjecture);
+            w.printQuery(conjecture.getConjecture());
             out.flush();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        System.out.printf(((SpassTptpFolReasoner)prover).queryProof(bs, conjecture));
-        assertTrue(prover.query(bs, conjecture));
+        System.out.printf(((SpassTptpFolReasoner)prover).queryProof(bs, conjecture.getConjecture()));
+        if (conjecture instanceof NonConjecture) {
+            assertFalse(prover.query(bs, conjecture.getConjecture()));
+        } else {
+            assertTrue(prover.query(bs, conjecture.getConjecture()));
+        }
     }
 
     private static Stream<Arguments> provideOntologySourceLocations() throws URISyntaxException {
@@ -65,14 +72,15 @@ public class OWL2ReasonerTest {
         File ontologiesBaseDir = new File(ontologiesBaseURL.toURI());
 
         OWLAnnotationProperty conjectureAnnotationProperty = man.getOWLDataFactory().getOWLAnnotationProperty(conjectureProp);
+        OWLAnnotationProperty nonConjectureAnnotationProperty = man.getOWLDataFactory().getOWLAnnotationProperty(nonConjectureProp);
 
         return Arrays.stream(ontologiesBaseDir.listFiles(file -> !file.getName().equals("test-base.ofn") && file.getName().endsWith(".ofn"))).flatMap(file -> {
             try {
                 OWLOntology onto = man.loadOntologyFromOntologyDocument(OWL2ReasonerTest.class.getResourceAsStream("/ontologies/" + file.getName()));
                 AspectAnnotationOWL2TPTPObjectRenderer renderer = new AspectAnnotationOWL2TPTPObjectRenderer(onto, new PrintWriter(new PrintStream(OutputStream.nullOutputStream())));
                 onto.accept(renderer);
-                return onto.getAnnotations().stream().filter(annotation -> annotation.getProperty().equals(conjectureAnnotationProperty)).map(annotation ->
-                      Arguments.of(renderer.getBeliefSet(), parseFormula(annotation.getValue().asLiteral().get().getLiteral(), renderer.getFolParser()).orElseThrow(() -> new RuntimeException()))
+                return onto.getAnnotations().stream().filter(annotation -> annotation.getProperty().equals(conjectureAnnotationProperty) || annotation.getProperty().equals(nonConjectureAnnotationProperty)).map(annotation ->
+                      Arguments.of(file, renderer.getBeliefSet(), getConjecture(parseFormula(annotation.getValue().asLiteral().get().getLiteral(), renderer.getFolParser()).orElseThrow(RuntimeException::new), annotation.getProperty().equals(nonConjectureAnnotationProperty)))
                 );
             } catch (OWLOntologyCreationException e) {
                 throw new RuntimeException(e);
@@ -88,5 +96,21 @@ public class OWL2ReasonerTest {
             return Optional.empty();
         }
         return Optional.of(result);
+    }
+
+    private static Conjecture getConjecture(FolFormula conjecture, boolean negative) {
+        return (negative ? new NonConjecture(conjecture) : new Conjecture(conjecture));
+    }
+
+    private static class Conjecture {
+        private FolFormula conjecture;
+
+        Conjecture(FolFormula conjecture) {this.conjecture = conjecture;}
+
+        public FolFormula getConjecture() {return conjecture;}
+    }
+
+    private static class NonConjecture extends Conjecture {
+        NonConjecture(FolFormula conjecture) {super(conjecture);}
     }
 }

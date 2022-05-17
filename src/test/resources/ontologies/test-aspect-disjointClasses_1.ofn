@@ -16,7 +16,7 @@ Declaration(Class(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/as
 Declaration(Class(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Planet>))
 Declaration(ObjectProperty(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#after>))
 Declaration(ObjectProperty(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#before>))
-Declaration(NamedIndividual(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Date_2006-08-24>))
+Declaration(NamedIndividual(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Date_20060824>))
 Declaration(NamedIndividual(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Pluto>))
 
 ############################
@@ -54,8 +54,8 @@ SubClassOf(<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/di
 
 # Individual: <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Pluto> (<http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Pluto>)
 
-ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> "{:Date_2006-08-24} and :after value :Date_2006-08-24") <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#DwarfPlanet> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Pluto>)
-ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> ":before value :Date_2006-08-24") <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Planet> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Pluto>)
+ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> "{:Date_20060824} and :after value :Date_20060824"^^xsd:string) <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#DwarfPlanet> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Pluto>)
+ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> ":before value :Date_20060824"^^xsd:string) <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Planet> <http://ontology.aspectowl.xyz/reasoner/aspectowl2tptp/test/aspect/disjointClasses_1#Pluto>)
 
 
 )

@@ -15,8 +15,8 @@ Declaration(Class(:DwarfPlanet))
 Declaration(Class(:Planet))
 Declaration(ObjectProperty(:after))
 Declaration(ObjectProperty(:before))
-Declaration(NamedIndividual(:Date_1930-02-18))
-Declaration(NamedIndividual(:Date_2006-08-24))
+Declaration(NamedIndividual(:Date_19300218))
+Declaration(NamedIndividual(:Date_20060824))
 Declaration(NamedIndividual(:IAO))
 Declaration(NamedIndividual(:Pluto))
 
@@ -46,15 +46,9 @@ DisjointClasses(:DwarfPlanet :Planet)
 
 # Individual: :Pluto (:Pluto)
 
-ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> "({:Date_2006-08-24}) or (:after value :Date_2006-08-24)"^^xsd:string) :DwarfPlanet :Pluto)
-ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> "(({:Date_1930-02-18}) or (:after value :Date_1930-02-18))
- and (:before value :Date_2006-08-24)"^^xsd:string) :Planet :Pluto)
-
-
-
-
-
-
+ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> "({:Date_20060824}) or (:after value :Date_20060824)"^^xsd:string) :DwarfPlanet :Pluto)
+ClassAssertion(Annotation(<http://ontology.aspectowl.xyz#hasAspect> "(({:Date_19300218}) or (:after value :Date_19300218))
+ and (:before value :Date_20060824)"^^xsd:string) :Planet :Pluto)
 
 
 )

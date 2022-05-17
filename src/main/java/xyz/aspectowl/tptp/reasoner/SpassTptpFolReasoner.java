@@ -138,7 +138,7 @@ public class SpassTptpFolReasoner extends FolReasoner {
             return false;
         if (Pattern.compile("SPASS beiseite: Ran out of time").matcher(output).find())
             throw new RuntimeException("Failure: SPASS timeout.");
-        throw new RuntimeException("Failure: SPASS returned no result which can be interpreted.");
+        throw new RuntimeException("Failure: SPASS returned no result which can be interpreted. The message was: " + output);
     }
 
     @Override
